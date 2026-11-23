@@ -1,110 +1,102 @@
 from collections.abc import Callable
 
-from logic import Task, add_task, delete_task, mark_task_done
+from logic import Task, TaskManager
 
 
-def print_menu() -> None:
-    print("\n===== TO-DO LIST =====")
-    print("1. Показать задачи")
-    print("2. Добавить задачу")
-    print("3. Отметить задачу выполненной")
-    print("4. Удалить задачу")
-    print("0. Выход")
+class ConsoleUI:
+    """Консольный интерфейс приложения."""
 
+    def __init__(
+        self,
+        manager: TaskManager,
+        save_callback: Callable[[list[Task]], None] | None = None,
+    ):
+        self.manager = manager
+        self.save_callback = save_callback
 
-def _show_tasks(tasks: list[Task]) -> None:
-    if not tasks:
-        print("\nСписок задач пуст.")
-        return
+    def print_menu(self) -> None:
+        print("\n=== Список дел ===")
+        print("1. Добавить дело")
+        print("2. Показать все дела")
+        print("3. Отметить дело выполненным")
+        print("4. Удалить дело")
+        print("5. Показать только невыполненные")
+        print("6. Найти дело по названию")
+        print("0. Выход")
 
-    print("\nВаши задачи:")
-    for position, task in enumerate(tasks, start=1):
-        status = "выполнена" if task.done else "не выполнена"
-        print(f"{position}. [{status}] {task.title} (срок: {task.deadline})")
+    def print_tasks(self, tasks: list[Task] | None = None) -> None:
+        items = self.manager.get_all() if tasks is None else tasks
+        if not items:
+            print("Список пуст")
+            return
+        for number, task in enumerate(items, start=1):
+            print(f"{number}. {task}")
 
+    def _save(self) -> None:
+        if self.save_callback is not None:
+            try:
+                self.save_callback(self.manager.get_all())
+            except OSError as error:
+                print(f"Не удалось сохранить данные: {error}")
 
-def _read_position(prompt: str, tasks: list[Task]) -> int | None:
-    raw_position = input(prompt).strip()
-    try:
-        position = int(raw_position)
-    except ValueError:
-        print("Введите целый номер задачи.")
-        return None
+    def add_flow(self) -> None:
+        title = input("Название дела: ").strip()
+        deadline = input("Срок (ГГГГ-ММ-ДД): ").strip()
+        try:
+            self.manager.add_task(title, deadline)
+            self._save()
+            print("Дело добавлено")
+        except ValueError as error:
+            print(f"Ошибка: {error}")
 
-    if position < 1 or position > len(tasks):
-        print("Задачи с таким номером нет.")
-        return None
-    return position
+    def mark_done_flow(self) -> None:
+        title = input("Название выполненного дела: ").strip()
+        try:
+            self.manager.mark_done(title)
+            self._save()
+            print("Дело отмечено выполненным")
+        except ValueError as error:
+            print(f"Ошибка: {error}")
 
+    def remove_flow(self) -> None:
+        title = input("Название дела для удаления: ").strip()
+        try:
+            self.manager.remove_task(title)
+            self._save()
+            print("Дело удалено")
+        except ValueError as error:
+            print(f"Ошибка: {error}")
 
-def _save_after_change(
-    tasks: list[Task], save_callback: Callable[[list[Task]], None]
-) -> bool:
-    try:
-        save_callback(tasks)
-    except OSError as error:
-        print(f"Не удалось сохранить задачи: {error}")
-        return False
-    return True
+    def run(self) -> None:
+        while True:
+            self.print_menu()
+            choice = input("Выберите пункт: ").strip()
+            if choice == "1":
+                self.add_flow()
+            elif choice == "2":
+                self.print_tasks()
+            elif choice == "3":
+                self.mark_done_flow()
+            elif choice == "4":
+                self.remove_flow()
+            elif choice == "5":
+                self.print_tasks(self.manager.get_pending())
+            elif choice == "6":
+                fragment = input("Введите часть названия: ").strip()
+                try:
+                    self.print_tasks(self.manager.find_by_title(fragment))
+                except ValueError as error:
+                    print(f"Ошибка: {error}")
+            elif choice == "0":
+                print("До свидания!")
+                return
+            else:
+                print("Нет такого пункта меню")
 
 
 def run_app(
-    tasks: list[Task], save_callback: Callable[[list[Task]], None]
+    tasks: list[Task],
+    save_callback: Callable[[list[Task]], None],
 ) -> None:
-    while True:
-        print_menu()
-        choice = input("Выберите пункт меню: ").strip()
-
-        if choice == "0":
-            print("До свидания!")
-            return
-        if choice == "1":
-            _show_tasks(tasks)
-        elif choice == "2":
-            title = input("Название задачи: ").strip()
-            deadline = input("Срок выполнения: ").strip()
-            try:
-                add_task(tasks, title, deadline)
-            except ValueError as error:
-                print(error)
-                continue
-            if _save_after_change(tasks, save_callback):
-                print("Задача добавлена.")
-            else:
-                print("Задача добавлена в текущий список, но не сохранена на диск.")
-        elif choice == "3":
-            if not tasks:
-                print("Список задач пуст.")
-                continue
-            _show_tasks(tasks)
-            position = _read_position("Номер выполненной задачи: ", tasks)
-            if position is None:
-                continue
-            if mark_task_done(tasks, position):
-                if _save_after_change(tasks, save_callback):
-                    print("Задача отмечена как выполненная.")
-                else:
-                    print(
-                        "Статус изменён в текущем списке, "
-                        "но не сохранён на диск."
-                    )
-            else:
-                print("Эта задача уже выполнена.")
-        elif choice == "4":
-            if not tasks:
-                print("Список задач пуст.")
-                continue
-            _show_tasks(tasks)
-            position = _read_position("Номер задачи для удаления: ", tasks)
-            if position is None:
-                continue
-            deleted_task = delete_task(tasks, position)
-            if _save_after_change(tasks, save_callback):
-                print(f"Задача «{deleted_task.title}» удалена.")
-            else:
-                print(
-                    f"Задача «{deleted_task.title}» удалена из текущего списка, "
-                    "но изменение не сохранено на диск."
-                )
-        else:
-            print("Неизвестный пункт меню. Введите число от 0 до 4.")
+    """Совместимость с прежним способом запуска приложения."""
+    ConsoleUI(TaskManager(tasks), save_callback).run()
