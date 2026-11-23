@@ -7,43 +7,47 @@ from logic import Task
 TASKS_FILE = Path(__file__).with_name("tasks.json")
 
 
-def load_tasks(path: Path = TASKS_FILE) -> list[Task]:
-    try:
-        with path.open("r", encoding="utf-8") as file:
-            data = json.load(file)
-    except FileNotFoundError:
-        return []
+class Storage:
+    """Отвечает за чтение и запись списка дел в JSON-файл."""
 
-    if not isinstance(data, list):
-        raise ValueError("Корневой элемент JSON должен быть списком задач.")
+    def __init__(self, path: str | Path = TASKS_FILE):
+        self.path = Path(path)
 
-    tasks = []
-    for index, item in enumerate(data, start=1):
-        if not isinstance(item, dict):
-            raise ValueError(f"Запись задачи №{index} должна быть объектом.")
+    def save(self, tasks: list[Task]) -> None:
+        data = [task.to_dict() for task in tasks]
+        with self.path.open("w", encoding="utf-8") as file:
+            json.dump(data, file, ensure_ascii=False, indent=2)
+            file.write("\n")
+
+    def load(self) -> list[Task]:
         try:
-            tasks.append(
-                Task(
-                    title=item["title"],
-                    deadline=item["deadline"],
-                    done=item.get("done", False),
+            with self.path.open("r", encoding="utf-8") as file:
+                data = json.load(file)
+        except FileNotFoundError:
+            return []
+
+        if not isinstance(data, list):
+            raise ValueError("Хранилище повреждено: ожидается список дел")
+
+        tasks = []
+        for index, item in enumerate(data, start=1):
+            if not isinstance(item, dict):
+                raise ValueError(
+                    f"Хранилище повреждено: запись №{index} должна быть словарём"
                 )
-            )
-        except KeyError as error:
-            raise ValueError(
-                f"В задаче №{index} отсутствует поле {error.args[0]!r}."
-            ) from error
-        except ValueError as error:
-            raise ValueError(f"Некорректная задача №{index}: {error}") from error
-
-    return tasks
+            try:
+                tasks.append(Task.from_dict(item))
+            except (KeyError, TypeError, ValueError) as error:
+                raise ValueError(
+                    f"Хранилище повреждено: некорректная запись №{index}: {error}"
+                ) from error
+        return tasks
 
 
-def save_tasks(tasks: list[Task], path: Path = TASKS_FILE) -> None:
-    data = [
-        {"title": task.title, "deadline": task.deadline, "done": task.done}
-        for task in tasks
-    ]
-    with path.open("w", encoding="utf-8") as file:
-        json.dump(data, file, ensure_ascii=False, indent=2)
-        file.write("\n")
+# Функции сохранены для совместимости с предыдущей версией проекта.
+def load_tasks(path: str | Path = TASKS_FILE) -> list[Task]:
+    return Storage(path).load()
+
+
+def save_tasks(tasks: list[Task], path: str | Path = TASKS_FILE) -> None:
+    Storage(path).save(tasks)
