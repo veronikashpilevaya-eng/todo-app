@@ -1,17 +1,19 @@
 from json import JSONDecodeError
 
+from logic import TaskManager
 from storage import load_tasks, save_tasks
-from ui import run_app
+from ui import ConsoleUI
 
 
 def main() -> int:
     try:
-        tasks = load_tasks()
+        manager = TaskManager(load_tasks())
     except (OSError, JSONDecodeError, ValueError) as error:
         print(f"Не удалось загрузить задачи: {error}")
         return 1
 
-    run_app(tasks, save_tasks)
+    ui = ConsoleUI(manager, save_tasks)
+    ui.run()
     return 0
 
 
