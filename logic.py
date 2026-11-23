@@ -1,3 +1,11 @@
+from __future__ import annotations
+
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from storage import Storage
+
+
 class Task:
     """Дело в списке дел."""
 
@@ -12,6 +20,19 @@ class Task:
         self.deadline = deadline.strip()
         self.done = done
 
+    def to_dict(self) -> dict:
+        """Преобразует задачу в словарь для сохранения в JSON."""
+        return {
+            "title": self.title,
+            "deadline": self.deadline,
+            "done": self.done,
+        }
+
+    @classmethod
+    def from_dict(cls, data: dict) -> "Task":
+        """Создаёт задачу из словаря."""
+        return cls(data["title"], data["deadline"], data.get("done", False))
+
     def mark_done(self) -> None:
         """Отмечает дело выполненным."""
         self.done = True
@@ -24,8 +45,23 @@ class Task:
 class TaskManager:
     """Управляет списком дел."""
 
-    def __init__(self, tasks: list[Task] | None = None):
+    def __init__(
+        self,
+        storage: Storage | None = None,
+        tasks: list[Task] | None = None,
+    ):
+        self.storage = storage
         self.tasks: list[Task] = list(tasks) if tasks is not None else []
+
+    def load(self) -> None:
+        """Загружает задачи из подключённого хранилища."""
+        if self.storage is not None:
+            self.tasks = self.storage.load()
+
+    def save(self) -> None:
+        """Сохраняет задачи в подключённое хранилище."""
+        if self.storage is not None:
+            self.storage.save(self.get_all())
 
     def add_task(self, title: str, deadline: str) -> Task:
         task = Task(title, deadline)
@@ -68,6 +104,10 @@ class TaskManager:
             task for task in self.tasks
             if fragment in task.title.lower()
         ]
+
+    def get_sorted_by_deadline(self) -> list[Task]:
+        """Возвращает задачи, отсортированные по сроку выполнения."""
+        return sorted(self.tasks, key=lambda task: task.deadline)
 
 
 # Функции сохранены для совместимости с предыдущими версиями проекта.
