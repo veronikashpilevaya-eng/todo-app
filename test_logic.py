@@ -97,5 +97,10 @@ class TestTaskManager(unittest.TestCase):
         self.assertEqual([task.title for task in result], ["Хлеб", "Цветы"])
 
 
+def test_title_is_stripped_pytest_style():
+    task = Task(" Хлеб ", "2025-11-01")
+    assert task.title == "Хлеб"
+
+
 if __name__ == "__main__":
     unittest.main()
