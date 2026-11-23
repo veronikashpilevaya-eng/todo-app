@@ -1,46 +1,86 @@
-from dataclasses import dataclass
-
-
-@dataclass
 class Task:
-    title: str
-    deadline: str
-    done: bool = False
+    """Дело в списке дел."""
 
-    def __post_init__(self) -> None:
-        if not isinstance(self.title, str) or not self.title.strip():
-            raise ValueError("Название задачи не может быть пустым.")
-        if not isinstance(self.deadline, str) or not self.deadline.strip():
-            raise ValueError("Срок выполнения не может быть пустым.")
-        if not isinstance(self.done, bool):
-            raise ValueError("Статус задачи должен быть логическим значением.")
-
-        self.title = self.title.strip()
-        self.deadline = self.deadline.strip()
+    def __init__(self, title: str, deadline: str, done: bool = False):
+        if not isinstance(title, str) or not title.strip():
+            raise ValueError("Название дела не может быть пустым")
+        if not isinstance(deadline, str) or not deadline.strip():
+            raise ValueError("Срок выполнения не может быть пустым")
+        if not isinstance(done, bool):
+            raise ValueError("Статус дела должен иметь логическое значение")
+        self.title = title.strip()
+        self.deadline = deadline.strip()
+        self.done = done
 
     def mark_done(self) -> None:
         """Отмечает дело выполненным."""
         self.done = True
 
     def __str__(self) -> str:
-        status = "выполнено" if self.done else "не выполнено"
-        return f"{self.title} (до {self.deadline}) — {status}"
+        status = "[x]" if self.done else "[ ]"
+        return f"{status} {self.title} (срок: {self.deadline})"
 
 
+class TaskManager:
+    """Управляет списком дел."""
+
+    def __init__(self, tasks: list[Task] | None = None):
+        self.tasks: list[Task] = list(tasks) if tasks is not None else []
+
+    def add_task(self, title: str, deadline: str) -> Task:
+        task = Task(title, deadline)
+        self.tasks.append(task)
+        return task
+
+    def remove_task(self, title: str) -> None:
+        title = title.strip()
+        for task in self.tasks:
+            if task.title == title:
+                self.tasks.remove(task)
+                return
+        raise ValueError(f"Дело «{title}» не найдено")
+
+    def mark_done(self, title: str) -> None:
+        title = title.strip()
+        for task in self.tasks:
+            if task.title == title:
+                task.mark_done()
+                return
+        raise ValueError(f"Дело «{title}» не найдено")
+
+    def get_all(self) -> list[Task]:
+        """Возвращает копию списка дел."""
+        return list(self.tasks)
+
+    def get_pending(self) -> list[Task]:
+        """Возвращает только невыполненные дела."""
+        return [task for task in self.tasks if not task.done]
+
+    def count(self) -> int:
+        return len(self.tasks)
+
+    def find_by_title(self, fragment: str) -> list[Task]:
+        """Ищет дела по фрагменту названия без учёта регистра."""
+        fragment = fragment.strip().lower()
+        if not fragment:
+            raise ValueError("Введите текст для поиска")
+        return [
+            task for task in self.tasks
+            if fragment in task.title.lower()
+        ]
+
+
+# Функции сохранены для совместимости с предыдущими версиями проекта.
 def add_task(tasks: list[Task], title: str, deadline: str) -> Task:
-    task = Task(title=title, deadline=deadline)
+    task = Task(title, deadline)
     tasks.append(task)
     return task
 
 
-def _get_task(tasks: list[Task], position: int) -> Task:
+def mark_task_done(tasks: list[Task], position: int) -> bool:
     if position < 1 or position > len(tasks):
         raise IndexError("Задачи с таким номером нет.")
-    return tasks[position - 1]
-
-
-def mark_task_done(tasks: list[Task], position: int) -> bool:
-    task = _get_task(tasks, position)
+    task = tasks[position - 1]
     if task.done:
         return False
     task.mark_done()
@@ -48,5 +88,6 @@ def mark_task_done(tasks: list[Task], position: int) -> bool:
 
 
 def delete_task(tasks: list[Task], position: int) -> Task:
-    _get_task(tasks, position)
+    if position < 1 or position > len(tasks):
+        raise IndexError("Задачи с таким номером нет.")
     return tasks.pop(position - 1)
