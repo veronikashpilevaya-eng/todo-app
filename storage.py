@@ -1,4 +1,5 @@
 import json
+import os
 from pathlib import Path
 
 from logic import Task
@@ -15,6 +16,9 @@ class Storage:
 
     def save(self, tasks: list[Task]) -> None:
         data = [task.to_dict() for task in tasks]
+        backup_path = self.path.with_suffix(self.path.suffix + ".bak")
+        if self.path.exists():
+            os.replace(self.path, backup_path)
         with self.path.open("w", encoding="utf-8") as file:
             json.dump(data, file, ensure_ascii=False, indent=2)
             file.write("\n")
@@ -25,10 +29,8 @@ class Storage:
                 data = json.load(file)
         except FileNotFoundError:
             return []
-
         if not isinstance(data, list):
             raise ValueError("Хранилище повреждено: ожидается список дел")
-
         tasks = []
         for index, item in enumerate(data, start=1):
             if not isinstance(item, dict):
@@ -44,7 +46,6 @@ class Storage:
         return tasks
 
 
-# Функции сохранены для совместимости с предыдущей версией проекта.
 def load_tasks(path: str | Path = TASKS_FILE) -> list[Task]:
     return Storage(path).load()
 
