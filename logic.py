@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from datetime import datetime
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
@@ -14,6 +15,10 @@ class Task:
             raise ValueError("Название дела не может быть пустым")
         if not isinstance(deadline, str) or not deadline.strip():
             raise ValueError("Срок выполнения не может быть пустым")
+        try:
+            datetime.strptime(deadline.strip(), "%Y-%m-%d")
+        except ValueError as error:
+            raise ValueError("Срок должен быть в формате ГГГГ-ММ-ДД") from error
         if not isinstance(done, bool):
             raise ValueError("Статус дела должен иметь логическое значение")
         self.title = title.strip()
@@ -22,11 +27,7 @@ class Task:
 
     def to_dict(self) -> dict:
         """Преобразует задачу в словарь для сохранения в JSON."""
-        return {
-            "title": self.title,
-            "deadline": self.deadline,
-            "done": self.done,
-        }
+        return {"title": self.title, "deadline": self.deadline, "done": self.done}
 
     @classmethod
     def from_dict(cls, data: dict) -> "Task":
@@ -45,27 +46,22 @@ class Task:
 class TaskManager:
     """Управляет списком дел."""
 
-    def __init__(
-        self,
-        storage: Storage | None = None,
-        tasks: list[Task] | None = None,
-    ):
+    def __init__(self, storage: Storage | None = None, tasks: list[Task] | None = None):
         self.storage = storage
         self.tasks: list[Task] = list(tasks) if tasks is not None else []
 
     def load(self) -> None:
-        """Загружает задачи из подключённого хранилища."""
         if self.storage is not None:
             self.tasks = self.storage.load()
 
     def save(self) -> None:
-        """Сохраняет задачи в подключённое хранилище."""
         if self.storage is not None:
             self.storage.save(self.get_all())
 
     def add_task(self, title: str, deadline: str) -> Task:
         task = Task(title, deadline)
         self.tasks.append(task)
+        self.save()
         return task
 
     def remove_task(self, title: str) -> None:
@@ -73,6 +69,7 @@ class TaskManager:
         for task in self.tasks:
             if task.title == title:
                 self.tasks.remove(task)
+                self.save()
                 return
         raise ValueError(f"Дело «{title}» не найдено")
 
@@ -81,36 +78,29 @@ class TaskManager:
         for task in self.tasks:
             if task.title == title:
                 task.mark_done()
+                self.save()
                 return
         raise ValueError(f"Дело «{title}» не найдено")
 
     def get_all(self) -> list[Task]:
-        """Возвращает копию списка дел."""
         return list(self.tasks)
 
     def get_pending(self) -> list[Task]:
-        """Возвращает только невыполненные дела."""
         return [task for task in self.tasks if not task.done]
 
     def count(self) -> int:
         return len(self.tasks)
 
     def find_by_title(self, fragment: str) -> list[Task]:
-        """Ищет дела по фрагменту названия без учёта регистра."""
         fragment = fragment.strip().lower()
         if not fragment:
             raise ValueError("Введите текст для поиска")
-        return [
-            task for task in self.tasks
-            if fragment in task.title.lower()
-        ]
+        return [task for task in self.tasks if fragment in task.title.lower()]
 
     def get_sorted_by_deadline(self) -> list[Task]:
-        """Возвращает задачи, отсортированные по сроку выполнения."""
         return sorted(self.tasks, key=lambda task: task.deadline)
 
 
-# Функции сохранены для совместимости с предыдущими версиями проекта.
 def add_task(tasks: list[Task], title: str, deadline: str) -> Task:
     task = Task(title, deadline)
     tasks.append(task)
