@@ -5,32 +5,41 @@ class Task {
   +title: str
   +deadline: str
   +done: bool
+  +__init__(title: str, deadline: str, done: bool = False)
   +mark_done(): None
   +__str__(): str
 }
 
 class TaskManager {
-  -tasks: list
-  +add_task(task: Task): None
+  -tasks: list[Task]
+  +__init__(tasks: list[Task] = None)
+  +add_task(title: str, deadline: str): Task
   +remove_task(title: str): None
-  +get_all(): list
-  +find_by_title(title: str): Task
-}
-
-class TaskStorage {
-  -filename: str
-  +load(): list
-  +save(tasks: list): None
+  +mark_done(title: str): None
+  +get_all(): list[Task]
+  +get_pending(): list[Task]
+  +count(): int
+  +find_by_title(fragment: str): list[Task]
 }
 
 class ConsoleUI {
   -manager: TaskManager
-  +run(): None
+  -save_callback: Callable
   +print_menu(): None
-  +print_tasks(): None
+  +print_tasks(tasks): None
+  +add_flow(): None
+  +mark_done_flow(): None
+  +remove_flow(): None
+  +run(): None
+}
+
+package "storage.py" {
+  [load_tasks()]
+  [save_tasks(tasks)]
 }
 
 ConsoleUI --> TaskManager : использует
 TaskManager o-- "0..*" Task : содержит
-TaskManager ..> TaskStorage : использует
+ConsoleUI ..> [save_tasks] : вызывает после изменений
+[load_tasks] ..> Task : создаёт объекты
 @enduml
