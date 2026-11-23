@@ -1,4 +1,3 @@
-
 from dataclasses import dataclass
 
 
@@ -19,6 +18,14 @@ class Task:
         self.title = self.title.strip()
         self.deadline = self.deadline.strip()
 
+    def mark_done(self) -> None:
+        """Отмечает дело выполненным."""
+        self.done = True
+
+    def __str__(self) -> str:
+        status = "выполнено" if self.done else "не выполнено"
+        return f"{self.title} (до {self.deadline}) — {status}"
+
 
 def add_task(tasks: list[Task], title: str, deadline: str) -> Task:
     task = Task(title=title, deadline=deadline)
@@ -36,7 +43,7 @@ def mark_task_done(tasks: list[Task], position: int) -> bool:
     task = _get_task(tasks, position)
     if task.done:
         return False
-    task.done = True
+    task.mark_done()
     return True
 
 

@@ -1,0 +1,36 @@
+@startuml
+skinparam classAttributeIconSize 0
+
+class Task {
+  +title: str
+  +deadline: str
+  +done: bool
+  +mark_done(): None
+  +__str__(): str
+}
+
+class TaskManager {
+  -tasks: list
+  +add_task(task: Task): None
+  +remove_task(title: str): None
+  +get_all(): list
+  +find_by_title(title: str): Task
+}
+
+class TaskStorage {
+  -filename: str
+  +load(): list
+  +save(tasks: list): None
+}
+
+class ConsoleUI {
+  -manager: TaskManager
+  +run(): None
+  +print_menu(): None
+  +print_tasks(): None
+}
+
+ConsoleUI --> TaskManager : использует
+TaskManager o-- "0..*" Task : содержит
+TaskManager ..> TaskStorage : использует
+@enduml
