@@ -5,8 +5,7 @@ from logic import Task, TaskManager
 
 class TestTask(unittest.TestCase):
     def test_default_not_done(self):
-        task = Task("Дело", "2025-11-01")
-        self.assertFalse(task.done)
+        self.assertFalse(Task("Дело", "2025-11-01").done)
 
     def test_mark_done(self):
         task = Task("Дело", "2025-11-01")
@@ -14,8 +13,7 @@ class TestTask(unittest.TestCase):
         self.assertTrue(task.done)
 
     def test_title_is_stripped(self):
-        task = Task(" Хлеб ", "2025-11-01")
-        self.assertEqual(task.title, "Хлеб")
+        self.assertEqual(Task(" Хлеб ", "2025-11-01").title, "Хлеб")
 
     def test_empty_title_raises(self):
         with self.assertRaises(ValueError):
@@ -24,6 +22,12 @@ class TestTask(unittest.TestCase):
     def test_spaces_only_title_raises(self):
         with self.assertRaises(ValueError):
             Task(" ", "2025-11-01")
+
+    def test_empty_and_blank_titles_raise(self):
+        for bad in ["", " ", "\t\n", " \t "]:
+            with self.subTest(title=repr(bad)):
+                with self.assertRaises(ValueError):
+                    Task(bad, "2025-11-01")
 
     def test_to_dict(self):
         task = Task("Купить хлеб", "2025-11-01", True)
@@ -46,6 +50,17 @@ class TestTask(unittest.TestCase):
         with self.assertRaises(KeyError):
             Task.from_dict({"deadline": "2025-11-01"})
 
+    def test_valid_date(self):
+        self.assertEqual(Task("Дело", "2025-11-01").deadline, "2025-11-01")
+
+    def test_invalid_date_format_raises(self):
+        with self.assertRaisesRegex(ValueError, "Срок должен быть в формате"):
+            Task("Дело", "завтра")
+
+    def test_invalid_calendar_date_raises(self):
+        with self.assertRaises(ValueError):
+            Task("Дело", "2025-13-40")
+
 
 class TestTaskManager(unittest.TestCase):
     def setUp(self):
@@ -63,8 +78,7 @@ class TestTaskManager(unittest.TestCase):
 
     def test_mark_done_and_get_pending(self):
         self.manager.mark_done("Хлеб")
-        pending = self.manager.get_pending()
-        self.assertEqual([task.title for task in pending], ["Цветы"])
+        self.assertEqual([task.title for task in self.manager.get_pending()], ["Цветы"])
 
     def test_remove_existing(self):
         self.manager.remove_task("Хлеб")
