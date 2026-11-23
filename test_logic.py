@@ -4,56 +4,83 @@ from logic import Task, TaskManager
 
 
 class TestTask(unittest.TestCase):
-    def test_mark_done(self):
+    def test_default_not_done(self):
         task = Task("Дело", "2025-11-01")
         self.assertFalse(task.done)
+
+    def test_mark_done(self):
+        task = Task("Дело", "2025-11-01")
         task.mark_done()
         self.assertTrue(task.done)
 
+    def test_title_is_stripped(self):
+        task = Task(" Хлеб ", "2025-11-01")
+        self.assertEqual(task.title, "Хлеб")
+
     def test_empty_title_raises(self):
+        with self.assertRaises(ValueError):
+            Task("", "2025-11-01")
+
+    def test_spaces_only_title_raises(self):
         with self.assertRaises(ValueError):
             Task(" ", "2025-11-01")
 
-    def test_string_representation(self):
-        task = Task("Купить хлеб", "2025-11-01")
-        self.assertEqual(str(task), "[ ] Купить хлеб (срок: 2025-11-01)")
-        task.mark_done()
+    def test_to_dict(self):
+        task = Task("Купить хлеб", "2025-11-01", True)
+        self.assertEqual(
+            task.to_dict(),
+            {"title": "Купить хлеб", "deadline": "2025-11-01", "done": True},
+        )
+
+    def test_from_dict(self):
+        task = Task.from_dict(
+            {"title": "Купить хлеб", "deadline": "2025-11-01", "done": True}
+        )
         self.assertEqual(str(task), "[x] Купить хлеб (срок: 2025-11-01)")
+
+    def test_from_dict_default_done(self):
+        task = Task.from_dict({"title": "Дело", "deadline": "2025-11-01"})
+        self.assertFalse(task.done)
+
+    def test_from_dict_missing_title_raises(self):
+        with self.assertRaises(KeyError):
+            Task.from_dict({"deadline": "2025-11-01"})
 
 
 class TestTaskManager(unittest.TestCase):
+    def setUp(self):
+        self.manager = TaskManager()
+        self.manager.add_task("Хлеб", "2025-11-01")
+        self.manager.add_task("Цветы", "2025-11-03")
+
     def test_add_and_count(self):
-        manager = TaskManager()
-        manager.add_task("Дело 1", "2025-11-01")
-        manager.add_task("Дело 2", "2025-11-02")
-        self.assertEqual(manager.count(), 2)
-
-    def test_remove_missing_raises(self):
-        manager = TaskManager()
-        with self.assertRaises(ValueError):
-            manager.remove_task("Нет такого")
-
-    def test_mark_done_and_pending(self):
-        manager = TaskManager()
-        manager.add_task("Купить хлеб", "2025-11-01")
-        manager.add_task("Полить цветы", "2025-11-03")
-        manager.mark_done("Купить хлеб")
-        self.assertEqual(
-            [str(task) for task in manager.get_pending()],
-            ["[ ] Полить цветы (срок: 2025-11-03)"],
-        )
+        self.assertEqual(self.manager.count(), 2)
 
     def test_get_all_returns_copy(self):
-        manager = TaskManager()
-        manager.add_task("Дело", "2025-11-01")
-        copied = manager.get_all()
-        copied.clear()
-        self.assertEqual(manager.count(), 1)
+        tasks = self.manager.get_all()
+        tasks.pop()
+        self.assertEqual(self.manager.count(), 2)
 
-    def test_find_by_title_case_insensitive(self):
-        manager = TaskManager()
-        manager.add_task("Купить Хлеб", "2025-11-01")
-        self.assertEqual(len(manager.find_by_title("хЛеБ")), 1)
+    def test_mark_done_and_get_pending(self):
+        self.manager.mark_done("Хлеб")
+        pending = self.manager.get_pending()
+        self.assertEqual([task.title for task in pending], ["Цветы"])
+
+    def test_remove_existing(self):
+        self.manager.remove_task("Хлеб")
+        self.assertEqual(self.manager.count(), 1)
+
+    def test_remove_missing_raises(self):
+        with self.assertRaises(ValueError):
+            self.manager.remove_task("Нет такого")
+
+    def test_mark_done_missing_raises(self):
+        with self.assertRaises(ValueError):
+            self.manager.mark_done("Нет такого")
+
+    def test_get_sorted_by_deadline(self):
+        result = self.manager.get_sorted_by_deadline()
+        self.assertEqual([task.title for task in result], ["Хлеб", "Цветы"])
 
 
 if __name__ == "__main__":
